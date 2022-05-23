@@ -336,6 +336,35 @@ jobs:
     - run: cd tools && go install github.com/pavius/impi/cmd/impi
     - run: impi --local . --scheme stdThirdPartyLocal ./...
 
+  goreleaser:
+    # Run a single compiler check for 32-bit architecture (FreeBSD/ARM)
+    # Ref: https://github.com/hashicorp/terraform-provider-aws/issues/8988
+    needs: [go_mod_download]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@v2
+        continue-on-error: true
+        timeout-minutes: 2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-pkg-mod-${{ hashFiles('go.sum') }}
+      - name: goreleaser check --config .github/goreleaser-cross-compiler-test.yml
+        continue-on-error: true
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          args: check
+      - name: goreleaser build
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          # Locally, this step can take approx 5min
+          args: build --config .github/goreleaser-cross-compiler-test.yml --id 32-bit-arch --snapshot
+
   semgrep:
     runs-on: ubuntu-latest
     steps:
